@@ -124,6 +124,79 @@ function build_color_control!(grid, plot, dataset)
 end
 
 """
+    build_colormap_controls_inner!(layout, plot, start_row)
+
+Build colormap controls starting at the given row in an existing layout.
+Returns the next available row number.
+"""
+function build_colormap_controls_inner!(layout, plot, start_row)
+    row = start_row
+
+    # Colormap dropdown
+    Label(layout[row, 1], "Colormap:", halign = :right)
+    colormap_options = collect(zip(string.(COLORMAPS), COLORMAPS))
+    menu_colormap = Menu(layout[row, 2], options = colormap_options, default = string(COLORMAPS[1]))
+    on(menu_colormap.selection) do cmap
+        plot.colormap = cmap
+    end
+    row += 1
+
+    # Colorscale dropdown
+    Label(layout[row, 1], "Colorscale:", halign = :right)
+    menu_colorscale = Menu(layout[row, 2], options = COLORSCALES, default = "identity")
+    on(menu_colorscale.selection) do scale_func
+        plot.colorscale = scale_func
+    end
+    row += 1
+
+    # Colorrange min
+    Label(layout[row, 1], "Range min:", halign = :right)
+    current_min = try string(plot.colorrange[][1]) catch; "0.0" end
+    tb_min = Textbox(layout[row, 2], stored_string = current_min, validator = Float64, width = 120)
+    on(tb_min.stored_string) do s
+        try
+            new_min = parse(Float64, s)
+            current_range = plot.colorrange[]
+            plot.colorrange = (new_min, current_range[2])
+        catch
+            # Keep previous value on parse failure
+        end
+    end
+    row += 1
+
+    # Colorrange max
+    Label(layout[row, 1], "Range max:", halign = :right)
+    current_max = try string(plot.colorrange[][2]) catch; "1.0" end
+    tb_max = Textbox(layout[row, 2], stored_string = current_max, validator = Float64, width = 120)
+    on(tb_max.stored_string) do s
+        try
+            new_max = parse(Float64, s)
+            current_range = plot.colorrange[]
+            plot.colorrange = (current_range[1], new_max)
+        catch
+            # Keep previous value on parse failure
+        end
+    end
+    row += 1
+
+    # Alpha (transparency)
+    Label(layout[row, 1], "Alpha:", halign = :right)
+    current_alpha = try string(plot.alpha[]) catch; "1.0" end
+    tb_alpha = Textbox(layout[row, 2], stored_string = current_alpha, validator = Float64, width = 120)
+    on(tb_alpha.stored_string) do s
+        try
+            new_alpha = parse(Float64, s)
+            plot.alpha = clamp(new_alpha, 0.0, 1.0)
+        catch
+            # Keep previous value on parse failure
+        end
+    end
+    row += 1
+
+    return row
+end
+
+"""
     build_stroke_controls!(grid, plot)
 
 Build strokecolor and strokewidth controls for Poly/Lines plots.
@@ -166,63 +239,7 @@ Returns the GridLayout containing the controls.
 """
 function build_colormap_controls!(grid, plot)
     layout = GridLayout(grid)
-
-    # Colormap dropdown
-    Label(layout[1, 1], "Colormap:", halign = :right)
-    colormap_options = collect(zip(string.(COLORMAPS), COLORMAPS))
-    menu_colormap = Menu(layout[1, 2], options = colormap_options, default = string(COLORMAPS[1]))
-    on(menu_colormap.selection) do cmap
-        plot.colormap = cmap
-    end
-
-    # Colorscale dropdown
-    Label(layout[2, 1], "Colorscale:", halign = :right)
-    menu_colorscale = Menu(layout[2, 2], options = COLORSCALES, default = "identity")
-    on(menu_colorscale.selection) do scale_func
-        plot.colorscale = scale_func
-    end
-
-    # Colorrange min
-    Label(layout[3, 1], "Range min:", halign = :right)
-    current_min = try string(plot.colorrange[][1]) catch; "0.0" end
-    tb_min = Textbox(layout[3, 2], stored_string = current_min, validator = Float64, width = 120)
-    on(tb_min.stored_string) do s
-        try
-            new_min = parse(Float64, s)
-            current_range = plot.colorrange[]
-            plot.colorrange = (new_min, current_range[2])
-        catch
-            # Keep previous value on parse failure
-        end
-    end
-
-    # Colorrange max
-    Label(layout[4, 1], "Range max:", halign = :right)
-    current_max = try string(plot.colorrange[][2]) catch; "1.0" end
-    tb_max = Textbox(layout[4, 2], stored_string = current_max, validator = Float64, width = 120)
-    on(tb_max.stored_string) do s
-        try
-            new_max = parse(Float64, s)
-            current_range = plot.colorrange[]
-            plot.colorrange = (current_range[1], new_max)
-        catch
-            # Keep previous value on parse failure
-        end
-    end
-
-    # Alpha (transparency)
-    Label(layout[5, 1], "Alpha:", halign = :right)
-    current_alpha = try string(plot.alpha[]) catch; "1.0" end
-    tb_alpha = Textbox(layout[5, 2], stored_string = current_alpha, validator = Float64, width = 120)
-    on(tb_alpha.stored_string) do s
-        try
-            new_alpha = parse(Float64, s)
-            plot.alpha = clamp(new_alpha, 0.0, 1.0)
-        catch
-            # Keep previous value on parse failure
-        end
-    end
-
+    build_colormap_controls_inner!(layout, plot, 1)
     return layout
 end
 
