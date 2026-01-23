@@ -3,7 +3,8 @@ ConfigurePlot - A popup window for editing plot attributes in Makie.
 """
 module ConfigurePlot
 
-using Makie: Figure, Colorbar, Menu, Textbox, Label, GridLayout, on, Observable, RGBAf
+using Makie: Figure, Colorbar, Menu, Textbox, Label, GridLayout, on, Observable, RGBAf,
+             AbstractPlot, Poly, Lines, Scatter
 using Colors: parse
 
 export configure
@@ -195,6 +196,58 @@ function build_line_controls!(grid, plot)
     end
 
     return layout
+end
+
+"""
+    configure(plot::AbstractPlot) -> Figure
+
+Open a popup window to configure plot attributes interactively.
+Changes apply immediately as controls are adjusted.
+
+Supports:
+- All plots: colormap, colorscale, colorrange
+- Poly: strokecolor, strokewidth
+- Lines: strokecolor, strokewidth, linewidth
+- Scatter: marker, markersize
+"""
+function configure(plot::AbstractPlot)
+    fig = Figure(size = (450, 400))
+
+    # Title
+    Label(fig[0, 1:2], "Configure Plot", fontsize = 18, halign = :center)
+
+    # Universal: colormap controls on left
+    build_colormap_controls!(fig[1, 1], plot)
+
+    # Colorbar on right (syncs automatically with plot)
+    Colorbar(fig[1, 2], plot, width = 20)
+
+    # Plot-specific controls
+    row = 2
+
+    if plot isa Poly
+        Label(fig[row, 1:2], "Poly Settings", fontsize = 14, halign = :left)
+        row += 1
+        build_stroke_controls!(fig[row, 1:2], plot)
+        row += 1
+    end
+
+    if plot isa Lines
+        Label(fig[row, 1:2], "Lines Settings", fontsize = 14, halign = :left)
+        row += 1
+        build_line_controls!(fig[row, 1:2], plot)
+        row += 1
+    end
+
+    if plot isa Scatter
+        Label(fig[row, 1:2], "Scatter Settings", fontsize = 14, halign = :left)
+        row += 1
+        build_scatter_controls!(fig[row, 1:2], plot)
+        row += 1
+    end
+
+    display(fig)
+    return fig
 end
 
 end # module
