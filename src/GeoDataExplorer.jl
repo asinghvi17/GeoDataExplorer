@@ -2,6 +2,10 @@ module GeoDataExplorer
 
 include("datasets.jl")
 
+include("configure_plot.jl")
+using .ConfigurePlot: configure
+export configure
+
 include("scrollable_list_block.jl")
 
 using .ScrollableListBlocks: ScrollableList, OnClickHideHandler, OnClickConfigureHandler
