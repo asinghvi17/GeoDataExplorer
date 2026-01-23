@@ -51,6 +51,19 @@ function has_colormap(plot)
 end
 
 """
+    get_numeric_columns(dataset)
+
+Return a vector of column names (as Symbols) that have Real-typed elements.
+"""
+function get_numeric_columns(dataset)
+    names = Tables.columnnames(dataset)
+    return filter(names) do name
+        col = Tables.getcolumn(dataset, name)
+        eltype(col) <: Real
+    end
+end
+
+"""
     build_stroke_controls!(grid, plot)
 
 Build strokecolor and strokewidth controls for Poly/Lines plots.
