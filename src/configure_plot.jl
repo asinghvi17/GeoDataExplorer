@@ -85,7 +85,9 @@ function try_parse_color_input(input::String, dataset)
     # Otherwise, try to parse as color
     try
         parsed = parse(RGBAf, input)
-        n = length(first(Tables.columns(dataset)))
+        # Get row count by checking first column's length
+        first_col_name = first(Tables.columnnames(dataset))
+        n = length(Tables.getcolumn(dataset, first_col_name))
         return (:color, fill(parsed, n))
     catch
         return (:invalid, nothing)
