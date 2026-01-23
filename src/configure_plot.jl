@@ -119,4 +119,82 @@ function build_colormap_controls!(grid, plot)
     return layout
 end
 
+"""
+    build_scatter_controls!(grid, plot)
+
+Build marker and markersize controls for Scatter plots.
+"""
+function build_scatter_controls!(grid, plot)
+    layout = GridLayout(grid)
+
+    # Marker dropdown
+    Label(layout[1, 1], "Marker:", halign = :right)
+    marker_options = collect(zip(string.(MARKERS), MARKERS))
+    menu_marker = Menu(layout[1, 2], options = marker_options, default = string(MARKERS[1]))
+    on(menu_marker.selection) do m
+        plot.marker = m
+    end
+
+    # Markersize text input
+    Label(layout[2, 1], "Markersize:", halign = :right)
+    current_markersize = try string(plot.markersize[]) catch; "10.0" end
+    tb_markersize = Textbox(layout[2, 2], stored_string = current_markersize, validator = Float64)
+    on(tb_markersize.stored_string) do s
+        try
+            plot.markersize = parse(Float64, s)
+        catch
+            # Keep previous value on parse failure
+        end
+    end
+
+    return layout
+end
+
+"""
+    build_line_controls!(grid, plot)
+
+Build strokecolor, strokewidth, and linewidth controls for Lines plots.
+"""
+function build_line_controls!(grid, plot)
+    layout = GridLayout(grid)
+
+    # Strokecolor text input
+    Label(layout[1, 1], "Strokecolor:", halign = :right)
+    current_strokecolor = try string(plot.strokecolor[]) catch; "black" end
+    tb_strokecolor = Textbox(layout[1, 2], stored_string = current_strokecolor)
+    on(tb_strokecolor.stored_string) do s
+        try
+            plot.strokecolor = parse(RGBAf, s)
+        catch
+            # Keep previous value on parse failure
+        end
+    end
+
+    # Strokewidth text input
+    Label(layout[2, 1], "Strokewidth:", halign = :right)
+    current_strokewidth = try string(plot.strokewidth[]) catch; "1.0" end
+    tb_strokewidth = Textbox(layout[2, 2], stored_string = current_strokewidth, validator = Float64)
+    on(tb_strokewidth.stored_string) do s
+        try
+            plot.strokewidth = parse(Float64, s)
+        catch
+            # Keep previous value on parse failure
+        end
+    end
+
+    # Linewidth text input
+    Label(layout[3, 1], "Linewidth:", halign = :right)
+    current_linewidth = try string(plot.linewidth[]) catch; "1.0" end
+    tb_linewidth = Textbox(layout[3, 2], stored_string = current_linewidth, validator = Float64)
+    on(tb_linewidth.stored_string) do s
+        try
+            plot.linewidth = parse(Float64, s)
+        catch
+            # Keep previous value on parse failure
+        end
+    end
+
+    return layout
+end
+
 end # module
