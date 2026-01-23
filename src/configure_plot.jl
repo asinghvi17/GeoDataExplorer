@@ -4,7 +4,7 @@ ConfigurePlot - A popup window for editing plot attributes in Makie.
 module ConfigurePlot
 
 using Makie: Figure, Colorbar, Menu, Textbox, Label, GridLayout, on, Observable, RGBAf,
-             AbstractPlot, Poly, Lines, Scatter
+             AbstractPlot, Poly, Lines, Scatter, extract_colormap
 using Colors: parse
 
 export configure
@@ -19,16 +19,33 @@ const COLORMAPS = [
     :terrain, :oslo, :turbo
 ]
 
-# Colorscale options
+# Colorscale options (use tuples, not pairs, for Menu compatibility)
 const COLORSCALES = [
-    "identity" => identity,
-    "log10" => log10,
-    "sqrt" => sqrt,
-    "asinh" => asinh
+    ("identity", identity),
+    ("log10", log10),
+    ("sqrt", sqrt),
+    ("asinh", asinh)
 ]
 
 # Marker options for scatter plots
 const MARKERS = [:circle, :rect, :diamond, :cross, :utriangle, :star5]
+
+"""
+    has_colormap(plot)
+
+Check if a plot has colormap data that can be displayed in a Colorbar.
+Returns true if the plot has valid colormap data, false otherwise.
+"""
+function has_colormap(plot)
+    try
+        # Try to extract colormap - returns nothing if not available
+        cm = extract_colormap(plot)
+        # If extract_colormap returns nothing, the plot has no colormap data
+        return cm !== nothing
+    catch
+        return false
+    end
+end
 
 """
     build_stroke_controls!(grid, plot)
@@ -216,11 +233,20 @@ function configure(plot::AbstractPlot)
     # Title
     Label(fig[0, 1:2], "Configure Plot", fontsize = 18, halign = :center)
 
-    # Universal: colormap controls on left
-    build_colormap_controls!(fig[1, 1], plot)
+    # Check if plot has colormap data
+    plot_has_colormap = has_colormap(plot)
 
-    # Colorbar on right (syncs automatically with plot)
-    Colorbar(fig[1, 2], plot, width = 20)
+    if plot_has_colormap
+        # Colormap controls on left
+        build_colormap_controls!(fig[1, 1], plot)
+
+        # Colorbar on right (syncs automatically with plot)
+        Colorbar(fig[1, 2], plot, width = 20)
+    else
+        # No colormap - show a message instead
+        Label(fig[1, 1:2], "No colormap data available for this plot type",
+              fontsize = 12, halign = :center, color = :gray)
+    end
 
     # Plot-specific controls
     row = 2
