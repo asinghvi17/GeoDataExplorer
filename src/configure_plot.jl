@@ -64,6 +64,35 @@ function get_numeric_columns(dataset)
 end
 
 """
+    try_parse_color_input(input::String, dataset)
+
+Parse color input string. Returns:
+- `(:column, data)` if input is a numeric column name
+- `(:color, filled_vector)` if input parses as a color
+- `(:invalid, nothing)` if neither
+"""
+function try_parse_color_input(input::String, dataset)
+    sym = Symbol(input)
+
+    # First, check if it's a numeric column name
+    if Tables.hascolumn(dataset, sym)
+        col = Tables.getcolumn(dataset, sym)
+        if eltype(col) <: Real
+            return (:column, col)
+        end
+    end
+
+    # Otherwise, try to parse as color
+    try
+        parsed = parse(RGBAf, input)
+        n = length(first(Tables.columns(dataset)))
+        return (:color, fill(parsed, n))
+    catch
+        return (:invalid, nothing)
+    end
+end
+
+"""
     build_stroke_controls!(grid, plot)
 
 Build strokecolor and strokewidth controls for Poly/Lines plots.
