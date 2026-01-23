@@ -6,6 +6,7 @@ module ConfigurePlot
 using Makie: Figure, Colorbar, Menu, Textbox, Label, GridLayout, on, Observable, RGBAf,
              AbstractPlot, Poly, Lines, Scatter, extract_colormap
 using Colors: parse
+import Tables
 
 using GLMakie: GLMakie
 
