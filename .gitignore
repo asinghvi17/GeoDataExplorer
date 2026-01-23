@@ -1,0 +1,13 @@
+*.jl.*.cov
+*.jl.cov
+*.jl.mem
+.DS_Store
+/Manifest.toml
+/dev/
+/docs/build/
+/docs/site/
+/docs/src/examples
+/docs/Manifest.toml
+stuff.jl
+.vscode
+*.swp
