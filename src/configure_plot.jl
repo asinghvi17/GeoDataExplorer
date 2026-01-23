@@ -7,6 +7,8 @@ using Makie: Figure, Colorbar, Menu, Textbox, Label, GridLayout, on, Observable,
              AbstractPlot, Poly, Lines, Scatter, extract_colormap
 using Colors: parse
 
+using GLMakie: GLMakie
+
 export configure
 
 # Curated colormap list
@@ -58,7 +60,7 @@ function build_stroke_controls!(grid, plot)
     # Strokecolor text input
     Label(layout[1, 1], "Strokecolor:", halign = :right)
     current_strokecolor = try string(plot.strokecolor[]) catch; "black" end
-    tb_strokecolor = Textbox(layout[1, 2], stored_string = current_strokecolor)
+    tb_strokecolor = Textbox(layout[1, 2], stored_string = current_strokecolor, width = 120)
     on(tb_strokecolor.stored_string) do s
         try
             plot.strokecolor = parse(RGBAf, s)
@@ -70,7 +72,7 @@ function build_stroke_controls!(grid, plot)
     # Strokewidth text input
     Label(layout[2, 1], "Strokewidth:", halign = :right)
     current_strokewidth = try string(plot.strokewidth[]) catch; "1.0" end
-    tb_strokewidth = Textbox(layout[2, 2], stored_string = current_strokewidth, validator = Float64)
+    tb_strokewidth = Textbox(layout[2, 2], stored_string = current_strokewidth, validator = Float64, width = 120)
     on(tb_strokewidth.stored_string) do s
         try
             plot.strokewidth = parse(Float64, s)
@@ -109,7 +111,7 @@ function build_colormap_controls!(grid, plot)
     # Colorrange min
     Label(layout[3, 1], "Range min:", halign = :right)
     current_min = try string(plot.colorrange[][1]) catch; "0.0" end
-    tb_min = Textbox(layout[3, 2], stored_string = current_min, validator = Float64)
+    tb_min = Textbox(layout[3, 2], stored_string = current_min, validator = Float64, width = 120)
     on(tb_min.stored_string) do s
         try
             new_min = parse(Float64, s)
@@ -123,7 +125,7 @@ function build_colormap_controls!(grid, plot)
     # Colorrange max
     Label(layout[4, 1], "Range max:", halign = :right)
     current_max = try string(plot.colorrange[][2]) catch; "1.0" end
-    tb_max = Textbox(layout[4, 2], stored_string = current_max, validator = Float64)
+    tb_max = Textbox(layout[4, 2], stored_string = current_max, validator = Float64, width = 120)
     on(tb_max.stored_string) do s
         try
             new_max = parse(Float64, s)
@@ -156,7 +158,7 @@ function build_scatter_controls!(grid, plot)
     # Markersize text input
     Label(layout[2, 1], "Markersize:", halign = :right)
     current_markersize = try string(plot.markersize[]) catch; "10.0" end
-    tb_markersize = Textbox(layout[2, 2], stored_string = current_markersize, validator = Float64)
+    tb_markersize = Textbox(layout[2, 2], stored_string = current_markersize, validator = Float64, width = 120)
     on(tb_markersize.stored_string) do s
         try
             plot.markersize = parse(Float64, s)
@@ -179,7 +181,7 @@ function build_line_controls!(grid, plot)
     # Strokecolor text input
     Label(layout[1, 1], "Strokecolor:", halign = :right)
     current_strokecolor = try string(plot.strokecolor[]) catch; "black" end
-    tb_strokecolor = Textbox(layout[1, 2], stored_string = current_strokecolor)
+    tb_strokecolor = Textbox(layout[1, 2], stored_string = current_strokecolor, width = 120)
     on(tb_strokecolor.stored_string) do s
         try
             plot.strokecolor = parse(RGBAf, s)
@@ -191,7 +193,7 @@ function build_line_controls!(grid, plot)
     # Strokewidth text input
     Label(layout[2, 1], "Strokewidth:", halign = :right)
     current_strokewidth = try string(plot.strokewidth[]) catch; "1.0" end
-    tb_strokewidth = Textbox(layout[2, 2], stored_string = current_strokewidth, validator = Float64)
+    tb_strokewidth = Textbox(layout[2, 2], stored_string = current_strokewidth, validator = Float64, width = 120)
     on(tb_strokewidth.stored_string) do s
         try
             plot.strokewidth = parse(Float64, s)
@@ -203,7 +205,7 @@ function build_line_controls!(grid, plot)
     # Linewidth text input
     Label(layout[3, 1], "Linewidth:", halign = :right)
     current_linewidth = try string(plot.linewidth[]) catch; "1.0" end
-    tb_linewidth = Textbox(layout[3, 2], stored_string = current_linewidth, validator = Float64)
+    tb_linewidth = Textbox(layout[3, 2], stored_string = current_linewidth, validator = Float64, width = 120)
     on(tb_linewidth.stored_string) do s
         try
             plot.linewidth = parse(Float64, s)
@@ -272,7 +274,7 @@ function configure(plot::AbstractPlot)
         row += 1
     end
 
-    display(fig)
+    display(GLMakie.Screen(), fig; float = true, focus_on_show = true, title = "Plot Configurator")
     return fig
 end
 
