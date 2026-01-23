@@ -3,7 +3,7 @@ ConfigurePlot - A popup window for editing plot attributes in Makie.
 """
 module ConfigurePlot
 
-using Makie: Figure, Colorbar, Menu, Textbox, Label, GridLayout, on, Observable, RGBAf,
+using Makie: Figure, Colorbar, Menu, Textbox, Label, GridLayout, on, Observable, RGBAf, RGBf,
              AbstractPlot, Poly, Lines, Scatter, extract_colormap
 using Colors: parse
 import Tables
@@ -90,6 +90,37 @@ function try_parse_color_input(input::String, dataset)
     catch
         return (:invalid, nothing)
     end
+end
+
+"""
+    build_color_control!(grid, plot, dataset)
+
+Build a color textbox that accepts column names or color strings.
+Shows red border on invalid input.
+"""
+function build_color_control!(grid, plot, dataset)
+    layout = GridLayout(grid)
+
+    Label(layout[1, 1], "Color:", halign = :right)
+    tb_color = Textbox(layout[1, 2], stored_string = "", width = 120)
+
+    on(tb_color.stored_string) do s
+        isempty(s) && return
+
+        result = try_parse_color_input(s, dataset)
+
+        if result[1] == :column
+            plot.color = result[2]
+            tb_color.bordercolor = RGBf(0.8, 0.8, 0.8)
+        elseif result[1] == :color
+            plot.color = result[2]
+            tb_color.bordercolor = RGBf(0.8, 0.8, 0.8)
+        else  # :invalid
+            tb_color.bordercolor = RGBf(0.9, 0.2, 0.2)
+        end
+    end
+
+    return layout
 end
 
 """
