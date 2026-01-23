@@ -322,34 +322,65 @@ function build_line_controls!(grid, plot)
 end
 
 """
-    configure(plot::AbstractPlot) -> Figure
+    configure(plot::AbstractPlot; dataset=nothing) -> Figure
 
 Open a popup window to configure plot attributes interactively.
 Changes apply immediately as controls are adjusted.
 
 Supports:
-- All plots: colormap, colorscale, colorrange
+- All plots: colormap, colorscale, colorrange, alpha
 - Poly: strokecolor, strokewidth
 - Lines: strokecolor, strokewidth, linewidth
 - Scatter: marker, markersize
+
+When `dataset` is provided and plot is Poly/Lines/Scatter, shows a "Color:"
+textbox that accepts either a numeric column name or a color string.
 """
-function configure(plot::AbstractPlot)
+function configure(plot::AbstractPlot; dataset=nothing)
     fig = Figure(size = (450, 400))
 
     # Title
     Label(fig[0, 1:2], "Configure Plot", fontsize = 18, halign = :center)
 
-    # Check if plot has colormap data
+    # Check conditions
     plot_has_colormap = has_colormap(plot)
+    is_vector_plot = plot isa Union{Poly, Lines, Scatter}
+    show_color_control = dataset !== nothing && is_vector_plot
 
-    if plot_has_colormap
-        # Colormap controls on left
-        build_colormap_controls!(fig[1, 1], plot)
+    if plot_has_colormap || show_color_control
+        # Create layout for color controls
+        layout = GridLayout(fig[1, 1])
+        row = 1
+
+        # Color textbox at top (only when dataset provided for vector plots)
+        if show_color_control
+            Label(layout[row, 1], "Color:", halign = :right)
+            tb_color = Textbox(layout[row, 2], stored_string = "", width = 120)
+            on(tb_color.stored_string) do s
+                isempty(s) && return
+                result = try_parse_color_input(s, dataset)
+                if result[1] == :column
+                    plot.color = result[2]
+                    tb_color.bordercolor = RGBf(0.8, 0.8, 0.8)
+                elseif result[1] == :color
+                    plot.color = result[2]
+                    tb_color.bordercolor = RGBf(0.8, 0.8, 0.8)
+                else  # :invalid
+                    tb_color.bordercolor = RGBf(0.9, 0.2, 0.2)
+                end
+            end
+            row += 1
+        end
+
+        # Colormap controls below (if plot has colormap)
+        if plot_has_colormap
+            build_colormap_controls_inner!(layout, plot, row)
+        end
 
         # Colorbar on right (syncs automatically with plot)
         Colorbar(fig[1, 2], plot, width = 20)
     else
-        # No colormap - show alpha control only
+        # No colormap, no dataset - show alpha control only
         layout = GridLayout(fig[1, 1:2])
         Label(layout[1, 1], "Alpha:", halign = :right)
         current_alpha = try string(plot.alpha[]) catch; "1.0" end
