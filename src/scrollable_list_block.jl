@@ -14,6 +14,7 @@ using Makie: @Block, Block, Observable, GridLayout, lift, on, onany, Consume, is
              poly!, text!, Figure, Scene, Mouse, BBox, Makie, COLOR_ACCENT_DIMMED,
              COLOR_ACCENT, Auto, Inside, screen_relative
 using GeometryBasics: origin
+using ..ConfigurePlot
 
 export ScrollableList, OnClickHideHandler, OnClickConfigureHandler
 
@@ -367,13 +368,11 @@ function (h::OnClickConfigureHandler)(idx)
 end
 
 function configure(plt::Makie.AbstractPlot)
-    println("No `configure` method for plot $plt")
+    ConfigurePlot.configure(plt)
 end
 
 function configure(plt::Makie.Heatmap)
-    println("Configuring heatmap $plt")
-    fig = Figure()
-
+    ConfigurePlot.configure(plt)
 end
 
 end # module
