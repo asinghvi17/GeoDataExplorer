@@ -136,6 +136,19 @@ function build_colormap_controls!(grid, plot)
         end
     end
 
+    # Alpha (transparency)
+    Label(layout[5, 1], "Alpha:", halign = :right)
+    current_alpha = try string(plot.alpha[]) catch; "1.0" end
+    tb_alpha = Textbox(layout[5, 2], stored_string = current_alpha, validator = Float64, width = 120)
+    on(tb_alpha.stored_string) do s
+        try
+            new_alpha = parse(Float64, s)
+            plot.alpha = clamp(new_alpha, 0.0, 1.0)
+        catch
+            # Keep previous value on parse failure
+        end
+    end
+
     return layout
 end
 
@@ -245,9 +258,19 @@ function configure(plot::AbstractPlot)
         # Colorbar on right (syncs automatically with plot)
         Colorbar(fig[1, 2], plot, width = 20)
     else
-        # No colormap - show a message instead
-        Label(fig[1, 1:2], "No colormap data available for this plot type",
-              fontsize = 12, halign = :center, color = :gray)
+        # No colormap - show alpha control only
+        layout = GridLayout(fig[1, 1:2])
+        Label(layout[1, 1], "Alpha:", halign = :right)
+        current_alpha = try string(plot.alpha[]) catch; "1.0" end
+        tb_alpha = Textbox(layout[1, 2], stored_string = current_alpha, validator = Float64, width = 120)
+        on(tb_alpha.stored_string) do s
+            try
+                new_alpha = parse(Float64, s)
+                plot.alpha = clamp(new_alpha, 0.0, 1.0)
+            catch
+                # Keep previous value on parse failure
+            end
+        end
     end
 
     # Plot-specific controls
