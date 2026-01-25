@@ -377,10 +377,9 @@ function configure(plot::AbstractPlot; dataset=nothing)
         # Colormap controls below (if plot has colormap)
         if plot_has_colormap
             build_colormap_controls_inner!(layout, plot, row)
+            # Colorbar on right (syncs automatically with plot)
+            Colorbar(fig[1, 2], plot, width = 20)
         end
-
-        # Colorbar on right (syncs automatically with plot)
-        Colorbar(fig[1, 2], plot, width = 20)
     else
         # No colormap, no dataset - show alpha control only
         layout = GridLayout(fig[1, 1:2])
