@@ -75,7 +75,7 @@ function try_parse_color_input(input::String, dataset)
     sym = Symbol(input)
 
     # First, check if it's a numeric column name
-    if Tables.hascolumn(dataset, sym)
+    if sym in Tables.columnnames(dataset)
         col = Tables.getcolumn(dataset, sym)
         if eltype(col) <: Real
             return (:column, col)
