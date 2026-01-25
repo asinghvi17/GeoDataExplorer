@@ -374,10 +374,13 @@ function configure(plot::AbstractPlot; dataset=nothing)
             row += 1
         end
 
-        # Colormap controls below (if plot has colormap)
-        if plot_has_colormap
+        # Colormap controls below (show when plot has colormap OR dataset provided for potential numeric color)
+        if plot_has_colormap || show_color_control
             build_colormap_controls_inner!(layout, plot, row)
-            # Colorbar on right (syncs automatically with plot)
+        end
+
+        # Colorbar on right (only when plot currently has colormap data)
+        if plot_has_colormap
             Colorbar(fig[1, 2], plot, width = 20)
         end
     else
