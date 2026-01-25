@@ -357,7 +357,7 @@ function configure(plot::AbstractPlot; dataset=nothing)
         # Color textbox at top (only when dataset provided for vector plots)
         if show_color_control
             Label(layout[row, 1], "Color:", halign = :right)
-            tb_color = Textbox(layout[row, 2], stored_string = "", width = 120)
+            tb_color = Textbox(layout[row, 2], placeholder = "column or color", width = 120)
             on(tb_color.stored_string) do s
                 isempty(s) && return
                 result = try_parse_color_input(s, dataset)
