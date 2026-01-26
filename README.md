@@ -13,8 +13,6 @@ Pkg.add(url="https://github.com/anshulsinghvi/GeoDataExplorer.jl")
 
 ### Dataset Discovery
 
-Scan a directory to find all geospatial datasets:
-
 ```julia
 using GeoDataExplorer
 
@@ -22,153 +20,85 @@ datasets = discover_datasets("/path/to/data")
 # Returns: [(:Raster => "/path/to/dem.tif"), (:Vector => "/path/to/roads.geojson"), ...]
 ```
 
-Supported formats:
+**Supported formats:**
 - **Raster**: `.tif`, `.tiff`, `.geotiff`, `.nc`, `.nc4`, `.h5`
 - **Vector**: `.shp`, `.gpkg`, `.geojson`, `.parquet`, `.pq`, `.arrow`, `.feather`, `.fgb`
 
-### Loading Datasets
+### Loading & Plotting
 
 ```julia
-# Load vector data (returns a GeoDataFrame)
+using GLMakie
+
+# Vector data
 gdf = load_vector_dataset("/path/to/roads.geojson")
+fig, ax, plt = Figure(), Axis(fig[1, 1]), nothing
 
-# Load raster data (returns a lazy Raster)
+plt = plot_vector_dataset!(ax, gdf; color = colorant"steelblue")  # Solid color
+plt = plot_vector_dataset!(ax, gdf; color = :population)          # Color by column
+
+# Raster data
 raster = load_raster_dataset("/path/to/elevation.tif")
-```
-
-### Plotting Geospatial Data
-
-Plot vector datasets with automatic geometry type detection:
-
-```julia
-using GLMakie
-
-fig = Figure()
-ax = Axis(fig[1, 1])
-
-# Plot with a solid color
-plt = plot_vector_dataset!(ax, gdf; color = colorant"steelblue")
-
-# Plot with color mapped to a numeric column
-plt = plot_vector_dataset!(ax, gdf; color = :population)
-
-display(fig)
-```
-
-The function automatically detects geometry types (points, lines, polygons) and uses the appropriate Makie plot type (`scatter!`, `lines!`, or `poly!`).
-
-Plot raster datasets:
-
-```julia
-fig = Figure()
-ax = Axis(fig[1, 1])
-
 plt = plot_raster_dataset!(ax, raster)
-
-# Optionally crop to an area of interest
-plt = plot_raster_dataset!(ax, raster; area_of_interest = extent)
-
-display(fig)
+plt = plot_raster_dataset!(ax, raster; area_of_interest = extent)  # With cropping
 ```
 
-### Interactive Plot Configuration
+Geometry types (points, lines, polygons) are auto-detected and mapped to appropriate Makie plots (`scatter!`, `lines!`, `poly!`).
 
-Open a popup window to edit plot attributes in real-time:
+### Interactive Configuration
 
 ```julia
-# Basic usage
-configure(plt)
-
-# With dataset for dynamic color selection
-configure(plt; dataset = gdf)
+configure(plt)                    # Open popup to edit plot attributes
+configure(plt; dataset = gdf)     # Enable dynamic color selection by column
 ```
 
-When a dataset is provided for vector plots (Poly, Lines, Scatter), a "Color" field appears that accepts:
-- **Column names**: Type a numeric column name (e.g., `population`) to color by that data
-- **Color strings**: Type a color name (e.g., `red`, `#ff5500`) for solid coloring
+With a dataset, the Color field accepts column names (e.g., `population`) or color strings (e.g., `red`, `#ff5500`).
 
-Invalid input shows a red border; valid input applies immediately.
+**Available controls:**
 
-**Available controls by plot type:**
-
-| Control | All Plots | Poly | Lines | Scatter |
-|---------|-----------|------|-------|---------|
-| Color (with dataset) | - | Yes | Yes | Yes |
-| Colormap | Yes | Yes | Yes | Yes |
-| Colorscale | Yes | Yes | Yes | Yes |
-| Color Range | Yes | Yes | Yes | Yes |
+| Control | Poly | Lines | Scatter | Heatmap |
+|---------|------|-------|---------|---------|
+| Colormap/scale/range | Yes | Yes | Yes | Yes |
 | Alpha | Yes | Yes | Yes | Yes |
-| Strokecolor | - | Yes | Yes | - |
-| Strokewidth | - | Yes | Yes | - |
-| Linewidth | - | - | Yes | - |
-| Marker | - | - | - | Yes |
-| Markersize | - | - | - | Yes |
+| Strokecolor/width | Yes | Yes | - | - |
+| Linewidth | - | Yes | - | - |
+| Marker/size | - | - | Yes | - |
 
-**Colorscale options**: identity, log10, sqrt, asinh
+**Colorscales**: identity, log10, sqrt, asinh
+**Colormaps**: viridis, plasma, inferno, grays, RdBu, coolwarm, BrBG, terrain, oslo, turbo
 
-**Colormap options**: viridis, plasma, inferno, grays, RdBu, coolwarm, BrBG, terrain, oslo, turbo
-
-### Layer Management Widget
-
-A scrollable list widget for managing multiple layers:
+### Layer Management
 
 ```julia
-using GLMakie
-using GeoDataExplorer
-
 fig = Figure()
 ax = Axis(fig[1, 1])
-
-# Create some plots
-plots = [
-    poly!(ax, ...),
-    lines!(ax, ...),
-    scatter!(ax, ...)
-]
-
-# Create layer list
-items = [("■", "Polygons"), ("—", "Roads"), ("●", "Points")]
+plots = [poly!(ax, ...), lines!(ax, ...), scatter!(ax, ...)]
 
 sl = ScrollableList(fig[1, 2];
-    items = items,
-    on_item_click = OnClickHideHandler(plots),      # Click to toggle visibility
-    on_configure_click = OnClickConfigureHandler(plots)  # Click chevron to configure
+    items = [("Polygons"), ("Roads"), ("Points")],
+    on_item_click = OnClickHideHandler(plots),
+    on_configure_click = OnClickConfigureHandler(plots)
 )
-
-display(fig)
 ```
 
 ## Complete Example
 
 ```julia
-using GLMakie
-using GeoDataExplorer
-using DataFrames
+using GLMakie, GeoDataExplorer
 
-# Discover and load data
 datasets = discover_datasets("./data")
 gdf = load_vector_dataset(first(filter(d -> d.first == :Vector, datasets)).second)
 
-# Create figure and plot
 fig = Figure(size = (1200, 800))
 ax = Axis(fig[1, 1], aspect = DataAspect())
-
 plt = plot_vector_dataset!(ax, gdf; color = :value)
 
-display(fig)
-
-# Open configuration popup with dataset for dynamic color selection
 configure(plt; dataset = gdf)
+display(fig)
 ```
 
 ## Dependencies
 
-- Makie.jl / GLMakie.jl - Visualization
-- GeoDataFrames.jl - Vector data I/O
-- Rasters.jl - Raster data I/O
-- GeometryOps.jl - Geometry operations
-- Tables.jl - Tabular data interface
-- Colors.jl - Color handling
+Makie.jl, GeoDataFrames.jl, Rasters.jl, GeometryOps.jl, Tables.jl, Colors.jl
 
 ## License
 
