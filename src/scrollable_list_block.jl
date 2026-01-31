@@ -12,8 +12,8 @@ module ScrollableListBlocks
 using Makie: @Block, Block, Observable, GridLayout, lift, on, onany, Consume, is_mouseinside,
              campixel!, translate!, translation, RGBf, Point2f, Rect2f, Rect2i,
              poly!, text!, Figure, Scene, Mouse, BBox, Makie, COLOR_ACCENT_DIMMED,
-             COLOR_ACCENT, Auto, Inside, screen_relative
-using GeometryBasics: origin
+             COLOR_ACCENT, Auto, Inside, screen_relative, theme, to_value
+using GeometryBasics: origin, width, height
 using ..ConfigurePlot
 
 export ScrollableList, OnClickHideHandler, OnClickConfigureHandler

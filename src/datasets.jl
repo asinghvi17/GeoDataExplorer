@@ -2,9 +2,11 @@ import GeoDataFrames
 import Rasters
 import ArchGDAL, NCDatasets
 import GeometryOps as GO
+import GeoInterface as GI
 using GeometryOps.GeometryOpsCore: get_geometries
 import Tables
 using Colors: Colorant, @colorant_str
+using Makie: scatter!, lines!, poly!, heatmap!, surface!, NoShading, LinearAlgebra, convert_arguments, Surface
 
 """
     discover_datasets(dir)
@@ -65,7 +67,7 @@ function plot_vector_dataset!(axis, dataset; color = colorant"black", attrs...)
     end
 
     # identify the types of geometry in the dataset
-    unique_traits = unique(GI.trait, geometry)
+    unique_traits = unique(GI.trait.(geometry))
     plotting_trait = if length(unique_traits) == 1
         t = only(unique_traits)
         if t isa GI.PointTrait
@@ -78,10 +80,15 @@ function plot_vector_dataset!(axis, dataset; color = colorant"black", attrs...)
             error("Unsupported trait $t, use a point, line, or polygon dataset.")
         end
     else # many traits
-        if issetequal(unique_traits, (GI.LineStringTrait(), GI.MultiLineStringTrait()))
-            GI.LineStringTrait()
-        elseif issetequal(unique_traits, (GI.PolygonTrait(), GI.MultiPolygonTrait()))
+        # Check if all traits are polygon-like (Polygon or MultiPolygon)
+        all_polygon_like = all(t -> t isa GI.AbstractPolygonTrait || t isa GI.AbstractMultiPolygonTrait, unique_traits)
+        # Check if all traits are line-like (LineString or MultiLineString)
+        all_line_like = all(t -> t isa GI.AbstractCurveTrait, unique_traits)
+
+        if all_polygon_like
             GI.PolygonTrait()
+        elseif all_line_like
+            GI.LineStringTrait()
         else
             error("Multiple incompatible traits found in dataset, use a single trait dataset.\nFound traits: $unique_traits")
         end
@@ -119,13 +126,13 @@ function plot_raster_dataset!(axis, dataset::Rasters.Raster; area_of_interest = 
         but that's a bit more in the future.
         """)
     end
-    x, y, col = Makie.convert_arguments(Makie.Surface, reduced_dataset)
+    x, y, col = convert_arguments(Surface, reduced_dataset)
 
     xreversed = !issorted(x)
     yreversed = !issorted(y)
 
     uv_transform = if issorted(x) && issorted(y)
-        Makie.LinearAlgebra.I
+        LinearAlgebra.I
     elseif xreversed && yreversed
         :flip_xy
     elseif xreversed && !yreversed
@@ -136,10 +143,21 @@ function plot_raster_dataset!(axis, dataset::Rasters.Raster; area_of_interest = 
         error("This should never happen, please report this as a bug.")
     end
 
-    final_plot = if can_be_meshimage
-        meshimage!(axis, extrema(x), extrema(y), col; uv_transform = (uv_transform), attrs...)
+    # Handle reversed axes by permuting the color matrix
+    plot_col = if xreversed && yreversed
+        reverse(reverse(col, dims=1), dims=2)
+    elseif xreversed
+        reverse(col, dims=1)
+    elseif yreversed
+        reverse(col, dims=2)
     else
-        surface!(axis, x, y, zeros(size(col)); color = col, shading = Makie.NoShading, attrs...)
+        col
+    end
+
+    final_plot = if can_be_meshimage
+        heatmap!(axis, sort(collect(x)), sort(collect(y)), plot_col; attrs...)
+    else
+        surface!(axis, x, y, zeros(size(col)); color = col, shading = NoShading, attrs...)
     end
 
     return final_plot
