@@ -78,6 +78,7 @@ function load_and_plot(dir::String; extent=nothing)
     list = ScrollableList(fig[1, 2];
         items = items,
         width = 250,
+        tellheight = false,
         on_item_click = OnClickHideHandler(plots),
         on_configure_click = idx -> begin
             dataset_for_configure = types[idx] == :Vector ? datasets[idx] : nothing
