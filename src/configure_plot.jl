@@ -51,6 +51,53 @@ function has_colormap(plot)
 end
 
 """
+    get_child_plots(plot)
+
+Safely get child plots from a plot object. Returns empty vector if none.
+Note: hasproperty doesn't work correctly for Makie plots, so we use try-catch.
+"""
+function get_child_plots(plot)
+    try
+        children = plot.plots
+        if children isa AbstractVector && !isempty(children)
+            return children
+        end
+    catch
+    end
+    return []
+end
+
+"""
+    get_colorbar_plot(plot)
+
+Get the appropriate plot to use for a Colorbar. For Poly plots that have
+multiple colormaps (e.g., MultiPolygon), returns the underlying mesh plot.
+For other plots, returns the plot itself if it has a colormap.
+"""
+function get_colorbar_plot(plot)
+    # First try the plot directly
+    if has_colormap(plot)
+        try
+            # This will throw if there are multiple colormaps
+            extract_colormap(plot)
+            return plot
+        catch
+            # Multiple colormaps found - look for child plot with colormap
+        end
+    end
+
+    # For Poly and similar plots, check child plots
+    children = get_child_plots(plot)
+    for child in children
+        if has_colormap(child)
+            return child
+        end
+    end
+
+    return nothing
+end
+
+"""
     get_numeric_columns(dataset)
 
 Return a vector of column names (as Symbols) that have Real-typed elements.
@@ -126,6 +173,85 @@ function build_color_control!(grid, plot, dataset)
 end
 
 """
+    get_current_colormap_name(plot)
+
+Get the current colormap name from a plot, returning a string suitable for Menu default.
+"""
+function get_current_colormap_name(plot)
+    try
+        cmap = plot.colormap[]
+        # Handle Symbol colormaps
+        if cmap isa Symbol
+            return string(cmap)
+        end
+        # For other types, try to find a matching name in COLORMAPS
+        for cm in COLORMAPS
+            if cm == cmap
+                return string(cm)
+            end
+        end
+    catch
+    end
+    return string(COLORMAPS[1])  # Default to first colormap
+end
+
+"""
+    get_current_colorscale_name(plot)
+
+Get the current colorscale function name from a plot by looking it up in COLORSCALES.
+"""
+function get_current_colorscale_name(plot)
+    try
+        scale_func = plot.colorscale[]
+        # Look up the function in COLORSCALES
+        for (name, func) in COLORSCALES
+            if func === scale_func
+                return name
+            end
+        end
+    catch
+    end
+    return "identity"  # Default
+end
+
+"""
+    get_current_colorrange(plot)
+
+Get the current colorrange from a plot as a (min, max) tuple.
+Returns nothing if colorrange is automatic or unavailable.
+"""
+function get_current_colorrange(plot)
+    try
+        cr = plot.colorrange[]
+        # Handle tuple directly
+        if cr isa Tuple && length(cr) >= 2
+            return (Float64(cr[1]), Float64(cr[2]))
+        end
+        # Handle Vec2 or similar array-like
+        if cr isa AbstractVector && length(cr) >= 2
+            return (Float64(cr[1]), Float64(cr[2]))
+        end
+        # Try indexing directly (some types support this)
+        if applicable(getindex, cr, 1) && applicable(getindex, cr, 2)
+            return (Float64(cr[1]), Float64(cr[2]))
+        end
+    catch e
+        @debug "Could not extract colorrange" exception=e
+    end
+    # Try to get from calculated colorrange if available
+    try
+        if hasproperty(plot, :calculated_colorrange)
+            ccr = plot.calculated_colorrange[]
+            if ccr isa Tuple && length(ccr) >= 2
+                return (Float64(ccr[1]), Float64(ccr[2]))
+            end
+        end
+    catch
+    end
+    return nothing
+end
+
+"""
     build_colormap_controls_inner!(layout, plot, start_row)
 
 Build colormap controls starting at the given row in an existing layout.
@@ -134,32 +260,40 @@ Returns the next available row number.
 function build_colormap_controls_inner!(layout, plot, start_row)
     row = start_row
 
-    # Colormap dropdown
+    # Colormap dropdown - pre-fill with current value
     Label(layout[row, 1], "Colormap:", halign = :right)
     colormap_options = collect(zip(string.(COLORMAPS), COLORMAPS))
-    menu_colormap = Menu(layout[row, 2], options = colormap_options, default = string(COLORMAPS[1]))
+    current_colormap = get_current_colormap_name(plot)
+    menu_colormap = Menu(layout[row, 2], options = colormap_options, default = current_colormap)
     on(menu_colormap.selection) do cmap
         plot.colormap = cmap
     end
     row += 1
 
-    # Colorscale dropdown
+    # Colorscale dropdown - pre-fill with current value
     Label(layout[row, 1], "Colorscale:", halign = :right)
-    menu_colorscale = Menu(layout[row, 2], options = COLORSCALES, default = "identity")
+    current_colorscale = get_current_colorscale_name(plot)
+    menu_colorscale = Menu(layout[row, 2], options = COLORSCALES, default = current_colorscale)
     on(menu_colorscale.selection) do scale_func
         plot.colorscale = scale_func
     end
     row += 1
 
+    # Get current colorrange (may be nothing if automatic)
+    current_range = get_current_colorrange(plot)
+
     # Colorrange min
     Label(layout[row, 1], "Range min:", halign = :right)
-    current_min = try string(plot.colorrange[][1]) catch; "0.0" end
-    tb_min = Textbox(layout[row, 2], stored_string = current_min, validator = Float64, width = 120)
+    current_min = current_range !== nothing ? string(current_range[1]) : ""
+    tb_min = Textbox(layout[row, 2], stored_string = current_min,
+                     placeholder = "auto", validator = Float64, width = 120)
     on(tb_min.stored_string) do s
+        isempty(s) && return
         try
             new_min = parse(Float64, s)
-            current_range = plot.colorrange[]
-            plot.colorrange = (new_min, current_range[2])
+            cr = get_current_colorrange(plot)
+            max_val = cr !== nothing ? cr[2] : new_min + 1.0
+            plot.colorrange = (new_min, max_val)
         catch
             # Keep previous value on parse failure
         end
@@ -168,13 +302,16 @@ function build_colormap_controls_inner!(layout, plot, start_row)
 
     # Colorrange max
     Label(layout[row, 1], "Range max:", halign = :right)
-    current_max = try string(plot.colorrange[][2]) catch; "1.0" end
-    tb_max = Textbox(layout[row, 2], stored_string = current_max, validator = Float64, width = 120)
+    current_max = current_range !== nothing ? string(current_range[2]) : ""
+    tb_max = Textbox(layout[row, 2], stored_string = current_max,
+                     placeholder = "auto", validator = Float64, width = 120)
     on(tb_max.stored_string) do s
+        isempty(s) && return
         try
             new_max = parse(Float64, s)
-            current_range = plot.colorrange[]
-            plot.colorrange = (current_range[1], new_max)
+            cr = get_current_colorrange(plot)
+            min_val = cr !== nothing ? cr[1] : new_max - 1.0
+            plot.colorrange = (min_val, new_max)
         catch
             # Keep previous value on parse failure
         end
@@ -339,7 +476,7 @@ When `dataset` is provided and plot is Poly/Lines/Scatter, shows a "Color:"
 textbox that accepts either a numeric column name or a color string.
 """
 function configure(plot::AbstractPlot; dataset=nothing)
-    fig = Figure(size = (450, 400))
+    fig = Figure(size = (450, 550))
 
     # Title
     Label(fig[0, 1:2], "Configure Plot", fontsize = 18, halign = :center)
@@ -354,6 +491,10 @@ function configure(plot::AbstractPlot; dataset=nothing)
         layout = GridLayout(fig[1, 1])
         row = 1
 
+        # Get the underlying child plot for reading colormap info (for colorbar)
+        # Note: Setting attributes must go to the parent plot, child is read-only
+        colorbar_source = get_colorbar_plot(plot)
+
         # Color textbox at top (only when dataset provided for vector plots)
         if show_color_control
             Label(layout[row, 1], "Color:", halign = :right)
@@ -361,12 +502,16 @@ function configure(plot::AbstractPlot; dataset=nothing)
             on(tb_color.stored_string) do s
                 isempty(s) && return
                 result = try_parse_color_input(s, dataset)
-                if result[1] == :column
-                    plot.color = result[2]
-                    tb_color.bordercolor = RGBf(0.8, 0.8, 0.8)
-                elseif result[1] == :color
-                    plot.color = result[2]
-                    tb_color.bordercolor = RGBf(0.8, 0.8, 0.8)
+                if result[1] == :column || result[1] == :color
+                    try
+                        plot.color = result[2]  # Set on parent plot, not child
+                        tb_color.bordercolor = RGBf(0.8, 0.8, 0.8)
+                    catch e
+                        # Color assignment failed - likely type mismatch
+                        # (e.g., plot initialized with literal colors can't accept numeric data)
+                        @warn "Failed to set color" exception=e
+                        tb_color.bordercolor = RGBf(0.9, 0.2, 0.2)
+                    end
                 else  # :invalid
                     tb_color.bordercolor = RGBf(0.9, 0.2, 0.2)
                 end
@@ -376,9 +521,11 @@ function configure(plot::AbstractPlot; dataset=nothing)
 
         # Colormap controls below (show when plot has colormap OR dataset provided for potential numeric color)
         if plot_has_colormap || show_color_control
-            build_colormap_controls_inner!(layout, plot, row)
-            # Colorbar on right
-            Colorbar(fig[1, 2], plot, width = 20)
+            build_colormap_controls_inner!(layout, plot, row)  # Set on parent plot
+            # Colorbar on right - use child plot for reading colormap data
+            if colorbar_source !== nothing
+                Colorbar(fig[1, 2], colorbar_source, width = 20)
+            end
         end
     else
         # No colormap, no dataset - show alpha control only
