@@ -48,22 +48,38 @@ function load_raster_dataset(path)
     return Rasters.Raster(path; lazy = true)
 end
 
-function plot_vector_dataset!(axis, dataset; color = colorant"black", attrs...)
+function plot_vector_dataset!(axis, dataset; color = missing, attrs...)
     # Obtain geometries from the dataset
     geometry = get_geometries(dataset)
     # Obtain colors - either a single color which needs to be expanded to a vector of rgbaf
     # or a column name, whose values need to be extracted.
+    if ismissing(color)
+        colnames = Tables.columnnames(dataset)
+        real_col_idx = findfirst(colnames) do colname
+            col_eltype = eltype(identity.(Tables.getcolumn(dataset, colname)))
+            (col_eltype <: Real) && 
+            (col_eltype !== Missing)
+        end
+
+        if isnothing(real_col_idx)
+            color = NaN
+        else
+            color = Symbol(colnames[real_col_idx])
+        end
+    end
     final_color = if color isa Colorant
         fill(color, length(geometry))
     elseif color isa Symbol
-        if !Tables.hascolumn(dataset, color)
+        if !(color in Tables.columnnames(dataset))
             error("Column $color not found in dataset, use a colorant or a column name.")
-            fill(RGBAf(1,1,1,0), length(geometry))
+            fill(NaN, length(geometry))
         else
             _c = Tables.getcolumn(dataset, color)
-            @assert eltype(_c) <: Real "Column $color must be a real number, got $(eltype(_c))"
-            _c
+            # @assert eltype(_c) <: Real "Column $color must be a real number, got $(eltype(_c))"
+            identity.(_c)
         end
+    elseif color isa Number
+        fill(color, length(geometry))
     end
 
     # identify the types of geometry in the dataset
